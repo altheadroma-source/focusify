@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focusify 🍅 | Student Productivity Suite</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --accent-hover: #0284c7;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --input-bg: #0f172a;
+        }
+
+        .light-mode {
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --accent: #0284c7;
+            --accent-hover: #0369a1;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --input-bg: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* --- LOADING SCREEN --- */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .loader-logo {
+            font-size: 3.5rem;
+            color: var(--accent);
+            font-weight: 800;
+            margin-bottom: 15px;
+            animation: pulse 1.5s infinite;
+        }
+
+        .spinner {
+            width: 45px;
+            height: 45px;
+            border: 4px solid #334155;
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .loader-text {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 15px;
+            letter-spacing: 1px;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+
+        .fade-out { opacity: 0; visibility: hidden; }
+
+        /* --- NAVIGATION BAR --- */
+        .navbar {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 550px;
+            border-radius: 12px;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .nav-logo { font-size: 1.2rem; font-weight: 800; color: var(--accent); }
+        .nav-links { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover, .nav-btn.active { background-color: var(--accent); color: #ffffff; }
+
+        /* --- MAIN APP CONTAINER --- */
+        .app-card {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 550px;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .app-card.show { opacity: 1; transform: translateY(0); }
+
+        header { text-align: center; margin-bottom: 20px; }
+        header h1 { color: var(--accent); font-size: 2rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        header p { color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* TIMER STYLES */
+        .mode-selector { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
+        .mode-btn {
+            background-color: var(--input-bg);
+            color: var(--text-muted);
+            border: 1px solid #334155;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .mode-btn.active { background-color: var(--accent); color: #ffffff; border-color: var(--accent); }
+
+        .timer-display { font-size: 4.5rem; font-weight: 800; text-align: center; letter-spacing: 2px; margin: 10px 0 20px 0; color: var(--text); }
+
+        .controls { display: flex; gap: 12px; justify-content: center; margin-bottom: 10px; }
+        .btn { padding: 10px 20px; font-size: 0.95rem; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; }
+        .btn-primary { background-color: var(--accent); color: #ffffff; }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+        .btn-secondary { background-color: var(--input-bg); color: var(--text); border: 1px solid #334155; }
+        .btn-danger { background-color: var(--danger); color: white; }
+
+        hr { border: 0; height: 1px; background: #334155; margin: 20px 0; }
+
+        /* MUSIC SECTION */
+        .music-section h3, .advice-section h3, .todo-section h3, .reports-section h3 {
+            font-size: 0.95rem;
+            color: var(--accent);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .music-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .music-btn {
+            background: var(--input-bg);
+            border: 1px solid #334155;
+            color: var(--text);
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .music-btn:hover { background-color: var(--accent); color: #fff; border-color: var(--accent); }
+
+        /* ADVICE & TODO */
+        .advice-box {
+            background: var(--input-bg);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            border: 1px solid #334155;
+        }
+
+        .todo-input-group { display: flex; gap: 8px; margin-bottom: 12px; }
+        .todo-input-group input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #334155; background: var(--input-bg); color: var(--text); font-size: 0.9rem; }
+        .todo-list { list-style: none; max-height: 150px; overflow-y: auto; }
+        .todo-item { background: var(--input-bg); padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; border: 1px solid #334155; }
+        .todo-item.done { text-decoration: line-through; color: var(--text-muted); opacity: 0.6; }
+        .todo-item button { background: none; border: none; color: var(--danger); cursor: pointer; font-weight: bold; }
+
+        /* REPORTS */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+        .stat-card { background: var(--input-bg); border: 1px solid #334155; padding: 12px; border-radius: 8px; text-align: center; }
+        .stat-card h4 { font-size: 1.5rem; color: var(--accent); }
+        .stat-card p { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+        /* MODALS */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal { background: var(--card-bg); padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+        .modal h2 { color: var(--accent); font-size: 1.3rem; margin-bottom: 12px; }
+        .form-group { margin-bottom: 12px; text-align: left; }
+        .form-group label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
+        .form-group input { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #334155; background: var(--input-bg); color: var(--text); font-size: 0.9rem; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+    </style>
+</head>
+<body>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen">
+        <div class="loader-logo">Focusify 🍅</div>
+        <div class="spinner"></div>
+        <div class="loader-text">Preparing study tools...</div>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <div style="width: 100%; max-width: 550px;">
+        
+        <!-- NAVIGATION BAR -->
+        <nav class="navbar">
+            <div class="nav-logo">Focusify 🍅</div>
+            <div class="nav-links">
+                <button class="nav-btn active" onclick="switchTab('all', this)">All</button>
+                <button class="nav-btn" onclick="switchTab('timer-tab', this)">Timer</button>
+                <button class="nav-btn" onclick="switchTab('music-tab', this)">Music</button>
+                <button class="nav-btn" onclick="switchTab('reports-tab', this)">Reports</button>
+                <button class="nav-btn" onclick="switchTab('advice-tab', this)">Advice</button>
+                <button class="nav-btn" onclick="switchTab('todo-tab', this)">To-Do</button>
+                <button class="nav-btn" onclick="openModal('settingsModal')">⚙️</button>
+                <button class="nav-btn" id="authBtn" onclick="handleAuthAction()">Login</button>
+            </div>
+        </nav>
+
+        <!-- APP CARD -->
+        <div class="app-card" id="appCard">
+            <header>
+                <h1>Focusify 🍅</h1>
+                <p id="welcomeMsg">Welcome, Guest Student!</p>
+            </header>
+
+            <!-- TAB 1: TIMER -->
+            <div id="timer-tab" class="tab-content active">
+                <div class="mode-selector">
+                    <button class="mode-btn active" id="btnPomo" onclick="setTimer(customPomo, this)">Pomodoro</button>
+                    <button class="mode-btn" id="btnShort" onclick="setTimer(customShort, this)">Short Break</button>
+                    <button class="mode-btn" id="btnLong" onclick="setTimer(customLong, this)">Long Break</button>
+                </div>
+
+                <div class="timer-display" id="timer">25:00</div>
+
+                <div class="controls">
+                    <button class="btn btn-primary" id="startBtn" onclick="startTimer()">Start</button>
+                    <button class="btn btn-secondary" id="pauseBtn" onclick="pauseTimer()">Pause</button>
+                    <button class="btn btn-danger" onclick="resetTimer()">Reset</button>
+                </div>
+            </div>
+
+            <div class="divider-line"><hr></div>
+
+            <!-- TAB 2: AMBIENT MUSIC PLAYER -->
+            <div id="music-tab" class="tab-content active">
+                <div class="music-section">
+                    <h3>🎵 Study Beats & Ambient Player</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">Choose background sound while studying:</p>
+                    <div class="music-grid">
+                        <button class="music-btn" onclick="playAudioStream('https://stream.zeno.fm/f3wvbbqmdg8uv', 'Lo-Fi Radio')">🎧 Lo-Fi Radio</button>
+                        <button class="music-btn" onclick="playAudioStream('https://cdn.pixabay.com/download/audio/2021/08/09/audio_2c270d4d80.mp3?filename=rain-and-thunder-nature-sounds-7579.mp3', 'Ulan (Rain)')">🌧️ Ulan Sound</button>
+                        <button class="music-btn" onclick="playAudioStream('https://cdn.pixabay.com/download/audio/2022/05/16/audio_db32a41d4a.mp3?filename=coffee-shop-ambience-11000.mp3', 'Coffee Shop')">☕ Coffee Shop</button>
+                        <button class="music-btn" onclick="stopAudioStream()">⏹️ Stop Music</button>
+                    </div>
+                    <div id="nowPlaying" style="font-size: 0.8rem; color: var(--accent); margin-top: 10px; text-align: center;"></div>
+                </div>
+            </div>
+
+            <div class="divider-line"><hr></div>
+
+            <!-- TAB 3: REPORTS & TRACKER -->
+            <div id="reports-tab" class="tab-content active">
+                <div class="reports-section">
+                    <h3>📊 Study Analytics Tracker</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h4 id="statSessions">0</h4>
+                            <p>Sessions</p>
+                        </div>
+                        <div class="stat-card">
+                            <h4 id="statTime">0m</h4>
+                            <p>Focus Time</p>
+                        </div>
+                        <div class="stat-card">
+                            <h4 id="statTasks">0</h4>
+                            <p>Tasks Done</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider-line"><hr></div>
+
+            <!-- TAB 4: ADVICE GENERATOR -->
+            <div id="advice-tab" class="tab-content active">
+                <div class="advice-section">
+                    <h3>💡 Panic & Procrastination Helper</h3>
+                    <div class="advice-box" id="adviceText">Press the button below when you're feeling lazy or stressed!</div>
+                    <button class="btn btn-secondary" style="width: 100%; font-size: 0.85rem; padding: 8px;" onclick="generateAdvice()"> Study Advice</button>
+                </div>
+            </div>
+
+            <div class="divider-line"><hr></div>
+
+            <!-- TAB 5: TO-DO LIST -->
+            <div id="todo-tab" class="tab-content active">
+                <div class="todo-section">
+                    <h3>📝 Quick Study Requirements</h3>
+                    <div class="todo-input-group">
+                        <input type="text" id="todoInput" placeholder="Add To-do list...">
+                        <button class="btn btn-primary" style="padding: 10px 16px;" onclick="addTodo()">Add</button>
+                    </div>
+                    <ul class="todo-list" id="todoList"></ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- LOGIN / REGISTER MODAL -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal">
+            <h2 id="modalTitle">Student Login</h2>
+            <div class="form-group">
+                <label>Username o Student ID:</label>
+                <input type="text" id="usernameInput" placeholder="ex: Student2026">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="passwordInput" placeholder="••••••••">
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px; text-align: right;">
+                <span id="toggleAuthMode" style="color: var(--accent); cursor: pointer;" onclick="switchAuthMode()">Don't have an account yet? Register Here.</span>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('loginModal')">Cancel</button>
+                <button class="btn btn-primary" id="authSubmitBtn" onclick="submitAuth()">Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL (MAY LIGHT/DARK MODE TOGGLE NA) -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <h2>⚙️ Timer & Theme Settings</h2>
+            <div class="form-group">
+                <label>Pomodoro (Mins):</label>
+                <input type="number" id="settingPomo" value="25">
+            </div>
+            <div class="form-group">
+                <label>Short Break (Mins):</label>
+                <input type="number" id="settingShort" value="5">
+            </div>
+            <div class="form-group" style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                <label style="margin: 0;">App Theme Mode:</label>
+                <button class="btn btn-secondary" onclick="toggleTheme()">Switch Light/Dark</button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isLoggedIn = false;
+        let currentUser = "Guest";
+        let isRegistering = false; // Flag para sa Register mode
+        let registeredUsers = {}; // Mock database sa memory
+
+        let completedSessions = 0;
+        let totalFocusMinutes = 0;
+        let completedTasksCount = 0;
+
+        let customPomo = 25;
+        let customShort = 5;
+        let customLong = 15;
+
+        let activeAudio = null;
+
+        // --- LOADING SCREEN ---
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('loading-screen');
+                const appCard = document.getElementById('appCard');
+                loader.classList.add('fade-out');
+                appCard.classList.add('show');
+                setTimeout(() => { loader.style.display = 'none'; document.body.style.overflow = 'auto'; }, 500);
+            }, 1000);
+        });
+
+        // --- NAVIGATION TABS ---
+        function switchTab(tabId, element) {
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if(btn.id !== 'authBtn' && btn.textContent !== '⚙️') btn.classList.remove('active');
+            });
+            element.classList.add('active');
+
+            const allTabs = document.querySelectorAll('.tab-content');
+            const allDividers = document.querySelectorAll('.divider-line');
+
+            if (tabId === 'all') {
+                allTabs.forEach(tab => tab.classList.add('active'));
+                allDividers.forEach(div => div.style.display = 'block');
+            } else {
+                allTabs.forEach(tab => tab.classList.remove('active'));
+                allDividers.forEach(div => div.style.display = 'none');
+                document.getElementById(tabId).classList.add('active');
+            }
+        }
+
+        // --- AUDIO PLAYER LOGIC ---
+        function playAudioStream(url, name) {
+            if (activeAudio) { activeAudio.pause(); }
+            activeAudio = new Audio(url);
+            activeAudio.loop = true;
+            activeAudio.play().catch(e => alert("Click the play button again to enable the audio."));
+            document.getElementById('nowPlaying').textContent = `Now Playing: ${name} 🎶`;
+        }
+
+        function stopAudioStream() {
+            if (activeAudio) {
+                activeAudio.pause();
+                activeAudio = null;
+            }
+            document.getElementById('nowPlaying').textContent = "Music stopped.";
+        }
+
+        // --- TIMER ALARM ---
+        function playAlarmSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.8);
+            } catch(e) {}
+        }
+
+        // --- AUTH & LOGIN / REGISTER SYSTEM ---
+        function handleAuthAction() {
+            if (isLoggedIn) {
+                isLoggedIn = false;
+                currentUser = "Guest";
+                document.getElementById('welcomeMsg').textContent = "Welcome, Guest Student!";
+                document.getElementById('authBtn').textContent = "Login";
+                alert("You have been logged out!");
+            } else {
+                isRegistering = false;
+                updateAuthModalUI();
+                openModal('loginModal');
+            }
+        }
+
+        function switchAuthMode() {
+            isRegistering = !isRegistering;
+            updateAuthModalUI();
+        }
+
+        function updateAuthModalUI() {
+            const title = document.getElementById('modalTitle');
+            const submitBtn = document.getElementById('authSubmitBtn');
+            const toggleText = document.getElementById('toggleAuthMode');
+
+            if (isRegistering) {
+                title.textContent = "Create New Account";
+                submitBtn.textContent = "Register";
+                toggleText.textContent = "already have an account? Log in here.";
+            } else {
+                title.textContent = "Student Login";
+                submitBtn.textContent = "Login";
+                toggleText.textContent = "Don't have an account yet? Register here";
+            }
+        }
+
+        function submitAuth() {
+            const username = document.getElementById('usernameInput').value.trim();
+            const password = document.getElementById('passwordInput').value.trim();
+
+            if (!username || !password) {
+                alert("Please enter your username and password!");
+                return;
+            }
+
+            if (isRegistering) {
+                if (registeredUsers[username]) {
+                    alert("This username is already in use. Choose another one.");
+                } else {
+                    registeredUsers[username] = password;
+                    alert("Account creation successful! You can now log in.");
+                    isRegistering = false;
+                    updateAuthModalUI();
+                    document.getElementById('passwordInput').value = "";
+                }
+            } else {
+                if (registeredUsers[username] && registeredUsers[username] === password) {
+                    isLoggedIn = true;
+                    currentUser = username;
+                    document.getElementById('welcomeMsg').textContent = `Welcome back, ${currentUser}! 👋`;
+                    document.getElementById('authBtn').textContent = "Logout";
+                    closeModal('loginModal');
+                    document.getElementById('usernameInput').value = "";
+                    document.getElementById('passwordInput').value = "";
+                } else {
+                    alert("Wrong username or password! (Or register an account first if you are new.).");
+                }
+            }
+        }
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        // --- SETTINGS & THEME ---
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+        }
+
+        function saveSettings() {
+            customPomo = parseInt(document.getElementById('settingPomo').value) || 25;
+            customShort = parseInt(document.getElementById('settingShort').value) || 5;
+            setTimer(customPomo, document.getElementById('btnPomo'));
+            closeModal('settingsModal');
+        }
+
+        // --- TIMER LOGIC ---
+        let initialTime = customPomo * 60;
+        let timeLeft = initialTime;
+        let timerId = null;
+        const timerDisplay = document.getElementById('timer');
+
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function setTimer(minutes, element) {
+            pauseTimer();
+            initialTime = minutes * 60;
+            timeLeft = initialTime;
+            updateDisplay();
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        function startTimer() {
+            if (timerId !== null) return;
+            timerId = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateDisplay();
+                } else {
+                    clearInterval(timerId);
+                    timerId = null;
+                    completedSessions++;
+                    totalFocusMinutes += Math.floor(initialTime / 60);
+                    updateReports();
+                    playAlarmSound();
+                    alert("⏰Times up! The timer session has ended.");
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() { clearInterval(timerId); timerId = null; }
+        function resetTimer() { pauseTimer(); timeLeft = initialTime; updateDisplay(); }
+
+        // --- REPORTS ---
+        function updateReports() {
+            document.getElementById('statSessions').textContent = completedSessions;
+            document.getElementById('statTime').textContent = `${totalFocusMinutes}m`;
+            document.getElementById('statTasks').textContent = completedTasksCount;
+        }
+
+        // --- ADVICE ---
+        const advices = [
+            "🔥 Tip: Try 5-minute rule. Study for 5 mins, watch how you'll continue!",
+            "☕ Burnout Alert: Stand up and drink warm water.",
+            "Put your phone to the other room for now so there are no distractions."
+        ];
+        function generateAdvice() {
+            const random = advices[Math.floor(Math.random() * advices.length)];
+            document.getElementById('adviceText').textContent = random;
+        }
+
+        // --- TO-DO ---
+        function addTodo() {
+            const input = document.getElementById('todoInput');
+            const text = input.value.trim();
+            if (!text) return;
+            const li = document.createElement('li');
+            li.className = 'todo-item';
+            li.innerHTML = `<span onclick="toggleTaskDone(this)" style="cursor:pointer;">${text}</span><button onclick="removeTask(this)">✕</button>`;
+            document.getElementById('todoList').appendChild(li);
+            input.value = '';
+        }
+
+        function toggleTaskDone(span) {
+            const item = span.parentElement;
+            item.classList.toggle('done');
+            completedTasksCount = item.classList.contains('done') ? completedTasksCount + 1 : Math.max(0, completedTasksCount - 1);
+            updateReports();
+        }
+
+        function removeTask(btn) {
+            const item = btn.parentElement;
+            if (item.classList.contains('done')) { completedTasksCount = Math.max(0, completedTasksCount - 1); updateReports(); }
+            item.remove();
+        }
+    </script>
+</body>
+</html>
